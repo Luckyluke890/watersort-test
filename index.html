@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Flask Test (GitHub)</title>
+  <title>Water Sort Puzzle - Level 1</title>
   <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.min.js"></script>
 </head>
 <body>
@@ -11,19 +11,115 @@ const config = {
   type: Phaser.AUTO,
   width: 800,
   height: 600,
-  backgroundColor: "#bbdefb",
+  backgroundColor: "#e3f2fd",
   scene: { preload, create }
 };
 
 new Phaser.Game(config);
 
+let flasks = [];
+let flaskData = [];
+let selected = null;
+
 function preload() {
-  // 👇 Flask.png must be in the same repo root
-  this.load.image("flask", "Flask.png");
+  this.load.image("flask", "Flask.png"); // <-- tumhari repo me Flask.png hona zaroori hai
 }
 
 function create() {
-  this.add.image(400, 300, "flask").setScale(0.5);
+  // --- 3 flask setup (Level 1) ---
+  flaskData = [
+    ["red","blue","green","red"], 
+    ["green","blue","red","blue"], 
+    []
+  ];
+
+  const positions = [200, 400, 600];
+
+  for (let i = 0; i < 3; i++) {
+    let flask = this.add.image(positions[i], 400, "flask").setScale(0.4);
+    flask.setInteractive();
+    flask.index = i;
+    flask.on("pointerdown", () => handleFlaskClick(this, flask.index));
+    flasks.push(flask);
+  }
+
+  drawLiquids(this);
+}
+
+// --- Draw liquid layers ---
+function drawLiquids(scene) {
+  if (scene.liquids) scene.liquids.clear();
+  else scene.liquids = scene.add.graphics();
+
+  scene.liquids.clear();
+
+  for (let i = 0; i < flaskData.length; i++) {
+    const bottle = flaskData[i];
+    for (let j = 0; j < bottle.length; j++) {
+      let color = bottle[j];
+      let y = 500 - j * 25;
+      let x = 200 + i * 200;
+      scene.liquids.fillStyle(Phaser.Display.Color.HexStringToColor(colorMap(color)).color, 1);
+      scene.liquids.fillRoundedRect(x - 30, y - 20, 60, 20, 5);
+    }
+  }
+}
+
+// --- Color map ---
+function colorMap(c) {
+  switch(c) {
+    case "red": return "#e53935";
+    case "blue": return "#1e88e5";
+    case "green": return "#43a047";
+    default: return "#000000";
+  }
+}
+
+// --- Handle clicks ---
+function handleFlaskClick(scene, index) {
+  if (selected === null) {
+    // Select source
+    if (flaskData[index].length > 0) {
+      selected = index;
+      flasks[index].setTint(0xffff00);
+    }
+  } else {
+    if (selected === index) {
+      // Cancel selection
+      flasks[selected].clearTint();
+      selected = null;
+      return;
+    }
+
+    // Try to pour
+    let src = flaskData[selected];
+    let dest = flaskData[index];
+
+    if (src.length === 0) return;
+
+    let topColor = src[src.length - 1];
+    let destTop = dest[dest.length - 1];
+
+    if (dest.length < 4 && (dest.length === 0 || destTop === topColor)) {
+      dest.push(src.pop());
+    }
+
+    flasks[selected].clearTint();
+    selected = null;
+    drawLiquids(scene);
+
+    // Check win
+    if (checkWin()) {
+      scene.add.text(300, 100, "🎉 Level Complete!", { fontSize: "32px", fill: "#000" });
+    }
+  }
+}
+
+// --- Win check ---
+function checkWin() {
+  return flaskData.every(bottle =>
+    bottle.length === 0 || bottle.every(c => c === bottle[0])
+  );
 }
 </script>
 </body>
